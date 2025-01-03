@@ -1,6 +1,6 @@
 __pycache__/
 
-models/
+/models/
 inputs/
 outputs/
 logs/

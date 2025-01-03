@@ -1,0 +1,16 @@
+fastapi
+torch
+torchvision
+torchaudio
+transformers
+torchsde
+opencv-python
+scipy
+psutil
+safetensors
+einops
+pyyaml
+segment_anything
+timm
+addict
+yapf
