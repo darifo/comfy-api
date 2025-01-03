@@ -7,7 +7,7 @@
 ```
 comfy-api
     ├── comfy                            # comfy核心代码目录
-    ├── custom_nodes                     # 自定义节点目录
+    ├── third_nodes                     # 三方节点代码目录
     ├── workflows                        # 工作流代码目录
     ├── app                              # 应用代码目录
     ├── models                           # 模型文件目录
