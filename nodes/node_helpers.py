@@ -57,3 +57,16 @@ def composite(destination, source, x, y, mask = None, multiplier = 8, resize_sou
     destination[:, :, top:bottom, left:right] = source_portion + destination_portion
     return destination
 
+
+def smooth_bbox_size(prev_bbox_size, curr_bbox_size, alpha):
+    if alpha == 0:
+        return prev_bbox_size
+    return round(alpha * curr_bbox_size + (1 - alpha) * prev_bbox_size)
+
+def smooth_center(prev_center, curr_center, alpha=0.5):
+    if alpha == 0:
+        return prev_center
+    return (
+        round(alpha * curr_center[0] + (1 - alpha) * prev_center[0]),
+        round(alpha * curr_center[1] + (1 - alpha) * prev_center[1])
+    )

@@ -1,16 +1,27 @@
-from app.workflows.lipstick_color_tring import LipstickColorTringFlow
-from fastapi import FastAPI, File, UploadFile
+from app.workflows.partial_repaint import PartialRepaintWorkflow
+from fastapi import FastAPI, File, UploadFile, Body
 from concurrent.futures import ThreadPoolExecutor, Future
 from models_loader import model_loader
 import folder_paths
 import os
 import hashlib
+import logging
 
 # 加载模型
 dino_model, sam, unet, clip, vae, style_model, clip_vision_model = model_loader.load_models()
 
-def lipstick_trying_task(reference_image_path, repaint_image_path):
-    base64_image, out_image_name = LipstickColorTringFlow().run(
+
+from pydantic import BaseModel
+class PartialRepaintRequest(BaseModel):
+    prompt: str
+    reference_image: str
+    repaint_image: str
+
+
+# 局部重绘任务
+# reference_image_path 为参考图片，repaint_image_path 为需要局部重绘的图片
+def partial_repaint(prompt: str, reference_image_path: str, repaint_image_path: str):
+    sid = PartialRepaintWorkflow().run(
             repaint_image_path, 
             reference_image_path, 
             unet, 
@@ -20,8 +31,9 @@ def lipstick_trying_task(reference_image_path, repaint_image_path):
             clip_vision_model, 
             dino_model, 
             sam,
+            prompt
         )
-    return {"out_image_name": out_image_name}
+    return {"sid": sid}
 
 app = FastAPI()
 executor = ThreadPoolExecutor(max_workers=1)
@@ -59,29 +71,36 @@ async def create_upload_file(file: UploadFile = File(...)):
             file.file.seek(0)
             buffer.write(file.file.read())
     except Exception as e:
+        logging.error(f"Error in file upload: {e}")
         return response_format({}, 7002, "文件上传失败")
     
     return response_format({"filename": new_filename})
 
-@app.post("/workflows/lipstick")
-async def lipstick_task(reference_image: str, repaint_image: str):
+@app.post("/workflows/partial_repaint")
+async def partial_repaint_api(request: PartialRepaintRequest = Body(elliptic=True)):
+    print(request)
     # 校验参数
-    if not reference_image:
+    if not request.reference_image:
         return response_format({}, 7003, "reference_image is required")
-    if not repaint_image:
+    if not request.repaint_image:
         return response_format({}, 7004, "repaint_image is required")
 
-    reference_image_path = os.path.join(folder_paths.uploads_directory, reference_image)
-    repaint_image_path = os.path.join(folder_paths.uploads_directory, repaint_image)
+    reference_image_path = os.path.join(folder_paths.uploads_directory, request.reference_image)
+    repaint_image_path = os.path.join(folder_paths.uploads_directory, request.repaint_image)
 
     if not os.path.exists(reference_image_path):
         return response_format({}, 7005, "reference_image not found")
     if not os.path.exists(repaint_image_path):
         return response_format({}, 7006, "repaint_image not found")
-    
-    try:
-        future: Future = executor.submit(lipstick_trying_task, reference_image_path, repaint_image_path)
-        result = future.result()
-        return response_format(result)
-    except Exception as e:
-        return response_format({}, 7007, "task error")
+
+    future: Future = executor.submit(partial_repaint, request.prompt, reference_image_path, repaint_image_path)
+    result = future.result()
+    return response_format(result)
+        
+    # try:
+    #     future: Future = executor.submit(partial_repaint, request.prompt, reference_image_path, repaint_image_path)
+    #     result = future.result()
+    #     return response_format(result)
+    # except Exception as e:
+    #     logging.error(f"Error in task: {e}")
+    #     return response_format({}, 7007, "task error")

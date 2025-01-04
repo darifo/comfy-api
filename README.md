@@ -6,10 +6,11 @@
 #### 项目结构 （Project structure）
 ```
 comfy-api
-    ├── comfy                            # comfy核心代码目录
-    ├── third_nodes                     # 三方节点代码目录
-    ├── workflows                        # 工作流代码目录
+    ├── comfy_api                        # comfy核心代码目录
+    ├── nodes                            # 节点代码目录
     ├── app                              # 应用代码目录
+    |──├── workflows                     # 工作流代码目录
+    |──├── server.py                     # WEB服务
     ├── models                           # 模型文件目录
     ├── inputs                           # 输入文件目录
     ├── outputs                          # 输出文件目录
@@ -19,11 +20,9 @@ comfy-api
     └── requirements.txt                 # 依赖包
     └── Dockerfile                       # Dockerfile
     └── main.py                          # 程序入口
+    └── models_loader.py                 # 模型加载器
     └── folder_paths.py                  # 路径相关配置
     └── utils.py                         # 工具类
-    └── server.py                        # WEB服务
-    └── nodes.py                         # 节点类
-    └── node_helpers.py                  # 节点辅助类
 
 ```
 
@@ -94,16 +93,16 @@ python main.py
 3、访问服务
 
 ```shell
-http://localhost:9609
+http://localhost:9696
 ```
 
 #### 工作流实现（Workflow Implementation）
 
-创建工作流代码文件：`workflows/my_workflow.py`
+创建工作流代码文件：`app/workflows/my_workflow.py`
 
 #### 在应用中使用工作流（Use Workflow in Application）
 
-
+在 `app/server.py` 中添加路由和调用方法
 
 
 

@@ -1,5 +1,5 @@
 import torch
-from app.workflows.lipstick_color_tring import LipstickColorTringFlow
+from app.workflows.partial_repaint import LipstickColorTringFlow
 
 if __name__ == "__main__":
     print(torch.cuda.is_available())
