@@ -15,4 +15,4 @@ class ModelLoader:
         print("All models loaded successfully.")
         return dino_model, sam, unet, clip, vae, style_model, clip_vision_model
 
-models = ModelLoader()
+model_loader = ModelLoader()

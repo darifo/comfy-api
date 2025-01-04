@@ -9,3 +9,5 @@ temp/
 .idea/
 .vscode/
 .env
+
+uploads/

@@ -3,6 +3,7 @@ from comfy_api.imagefunc import *
 from utils import random_seed
 import folder_paths
 import os
+import base64
 
 
 class LipstickColorTringFlow:
@@ -10,41 +11,26 @@ class LipstickColorTringFlow:
         self.nodes = Nodes()
         
     def run(self, repaint_image_path, reference_image_path, unet_model, vae_model, clip_model, style_model, clip_vision_model, dino_model, sam_model):
-        print("run start...")
+        print("load images...")
         repaint_image_ts, reference_image_ts = self.__load_images(repaint_image_path, reference_image_path)
+
         with torch.inference_mode():
-            print("segment start...")
+            print("segment repaint_image...")
             seg_mask_ts, _, _ = self.__clip_auto_segment(repaint_image_ts, dino_model, sam_model)
-
+        # 升维多通道以便尺寸归一和拼接
         seg_mask_ts = seg_mask_ts.unsqueeze(0).unsqueeze(-1).expand(-1, -1, -1, 3)
-
-        # print(type(seg_mask_ts))
-        # print(type(repaint_image_ts))
-        # print(type(reference_image_ts))
-
+        
         print("image_normalization start...")
         repaint_image_ts = self.__image_normalization(repaint_image_ts, 1024, 1024)
         seg_mask_ts = self.__image_normalization(seg_mask_ts, 1024, 1024)
         reference_image_ts = self.__image_normalization(reference_image_ts, 1024, 1024)
 
-        # print('seg_mask_ts size:', self.nodes.get_image_size(seg_mask_ts))
-        # print('repaint_image size:', self.nodes.get_image_size(repaint_image_ts))
-        # print('reference_image size:', self.nodes.get_image_size(reference_image_ts))
-
-        # print("seg_mask_ts.shape:", seg_mask_ts.shape)
-        # print("reference_image_ts.shape:", reference_image_ts.shape)
-
-        # tensor2pil(repaint_image_ts).show()
-
         concanate_image, = self.nodes.image_concanate(reference_image_ts, repaint_image_ts, 'right', True)
         # tensor2pil(concanate_image).show()
 
-        w, h, _ = self.nodes.get_image_size(reference_image_ts)
-        reference_empty_mask_image, = self.nodes.generate_empty_image(w, h, 1, 0)
+        reference_image_normal_w, reference_image_normal_h, _ = self.nodes.get_image_size(reference_image_ts)
+        reference_empty_mask_image, = self.nodes.generate_empty_image(reference_image_normal_w, reference_image_normal_h, 1, 0)
         # print(type(reference_empty_mask_ts))
-
-        # print("reference_empty_mask_image.shape:", reference_empty_mask_image.shape)
-        # print("seg_mask_ts.shape:", seg_mask_ts.shape)
 
         concanate_mask, = self.nodes.image_concanate(reference_empty_mask_image, seg_mask_ts, 'right', True)
         # tensor2pil(concanate_mask).show()
@@ -54,15 +40,12 @@ class LipstickColorTringFlow:
             prompt_text = ''
             conditioning, = self.nodes.clip_text_encode(clip_model, prompt_text)
             conditioning_negative, = self.nodes.conditioning_zero_out(conditioning)
+
             print("redux start...")
             conditioning = self.__redux_vision(conditioning, reference_image_ts, style_model, clip_vision_model)
             conditioning_positive, = self.nodes.flux_guidance(conditioning, 30)
 
-            # print("concanate_image.shape:", concanate_image.shape)
-            # print("concanate_mask.shape:", concanate_mask.shape)
-
             concanate_mask = image2mask(tensor2pil(concanate_mask))
-
             conditioning_positive, conditioning_negative, latent = self.nodes.inpaint_model_contitioning(
                 positive=conditioning_positive, 
                 negative=conditioning_negative, 
@@ -91,8 +74,16 @@ class LipstickColorTringFlow:
 
             out_image, = self.nodes.vae_decode(vae_model, out_latent)
 
-            save_path = os.path.join(folder_paths.output_directory, 'inpaint_'+str(seed)+'.png')
-            tensor_to_pil_image(out_image).save(save_path)
+            # 裁剪
+            out_image, = self.nodes.crop(out_image, 1024, 1024, reference_image_normal_w, 0)
+
+            out_image_name = 'inpaint_'+str(seed)+'.png'
+            save_path = os.path.join(folder_paths.output_directory, out_image_name)
+            output_pil_image = tensor_to_pil_image(out_image)
+            output_pil_image.save(save_path)
+
+            base64_image = base64.b64encode(output_pil_image.tobytes()).decode()
+            return base64_image, out_image_name
 
     def __redux_vision(self, conditioning, reference_image_ts, style_model, clip_vision_model):
         clip_vision_output, = self.nodes.clip_vision_encode(clip_vision_model, reference_image_ts, 'center')
@@ -111,6 +102,8 @@ class LipstickColorTringFlow:
         return (growed_mask, image_tensor, mask_tensor)
 
     def __image_normalization(self, image, target_width=512, target_height=512, x_offset=0, y_offset=0, mode='no'):
+        # 缩放 高度要保持一致 以便横向拼接
+        image, = self.nodes.image_scale_by_wh(image, 'lanczos', 0, target_height, False)
         output_images, = self.nodes.constrain_image(image, target_width, target_height, x_offset, y_offset, mode)
         if not output_images or len(output_images) == 0:
             raise ValueError("constrain_image returned an empty list")

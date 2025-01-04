@@ -40,6 +40,8 @@ temp_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "temp
 input_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "inputs")
 user_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "user")
 
+uploads_directory = os.path.join(os.path.dirname(os.path.realpath(__file__)), "uploads")
+
 def map_legacy(folder_name: str) -> str:
     legacy = {"unet": "diffusion_models",
               "clip": "text_encoders"}
