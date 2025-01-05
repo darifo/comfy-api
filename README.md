@@ -1,6 +1,6 @@
 
 <div align="center">
-    <h1>Just Api For Comfy Workflow</h1>
+    <h1>Customized Api Using Comfy Workflows</h1>
 </div>
 
 #### 项目结构 （Project structure）
@@ -81,6 +81,9 @@ Answer: This project has the following meanings:
 1、安装依赖包
 
 ```shell
+# 如果是GPU环境，torch相关单独安装
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
 pip install -r requirements.txt
 ```
 

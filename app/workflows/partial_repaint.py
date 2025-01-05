@@ -139,19 +139,13 @@ class PartialRepaintWorkflow:
         return (growed_mask, image_tensor, mask_tensor)
 
     def __image_normalization(self, image):
-        # 缩放 高度要保持一致 以便横向拼接
-        image, = self.nodes.image_scale_by_wh(image, 'lanczos', 0, self._unified_hight, False)
+        # 缩放 高度要保持一致 以便横向拼接 1024在flux模型上效果最好
+        image, = self.nodes.image_scale_by_wh(image, 'lanczos', 0, 1024, False)
         output_images, = self.nodes.constrain_image(image, 1024, 1024, 0, 0, 'no')
         if not output_images or len(output_images) == 0:
             raise ValueError("constrain_image returned an empty list")
         return output_images[0]
     
-    # def __constrain_image(self, image, target_width, target_height, x_offset=0, y_offset=0, mode='no') -> Tensor:
-    #     output_images, = self.nodes.constrain_image(image, target_width, target_height, x_offset, y_offset, mode)
-    #     if not output_images or len(output_images) == 0:
-    #         raise ValueError("constrain_image returned an empty list")
-    #     return output_images[0]
-
     def __grow_mask(self, mask, expand_piexls=20):
         exp_mask, = expand_mask(mask, expand_piexls, True)
         return exp_mask
